@@ -1,0 +1,50 @@
+system:
+  name: Cosmic Demo System
+  boundary: External users and partner APIs
+  description: Sample measurement definition illustrating COSMIC counting.
+  persistence_resources:
+    - PostgreSQL order database
+    - Redis cache (write-through to PostgreSQL)
+  external_actors:
+    - Customer portal
+    - Partner API Gateway
+objects_of_interest:
+  - Order
+  - Invoice
+  - Payment
+functional_processes:
+  - name: Submit Order
+    trigger: Customer submits order form
+    object_of_interest: Order
+    description: Validates and persists a newly submitted order.
+    data_movements:
+      - type: E
+        description: Receive order payload from customer portal.
+        code_reference: services/order_service.py:create_order
+      - type: R
+        description: Fetch customer profile for validation.
+        object_of_interest: Customer
+        code_reference: repositories/customer_repository.py:get_customer
+      - type: W
+        description: Persist order into PostgreSQL database.
+        code_reference: repositories/order_repository.py:save_order
+      - type: X
+        description: Return order confirmation with order identifier.
+        code_reference: services/order_service.py:create_order
+  - name: Cancel Order
+    trigger: Customer cancels an existing order
+    object_of_interest: Order
+    description: Cancels an order and informs external systems.
+    data_movements:
+      - type: E
+        description: Receive cancellation request.
+        code_reference: services/order_service.py:cancel_order
+      - type: R
+        description: Load order state from database.
+        code_reference: repositories/order_repository.py:get_order
+      - type: W
+        description: Update order status to Cancelled.
+        code_reference: repositories/order_repository.py:update_status
+      - type: X
+        description: Notify partner API gateway about cancellation.
+        code_reference: integrations/partner_api.py:send_cancellation
